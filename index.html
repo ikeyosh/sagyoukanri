@@ -5,7 +5,89 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>作業内容・時間記録表 - ログイン</title>
     <style>
-        /* 前回と同じスタイルをここに記述 */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .total-time {
+            font-weight: bold;
+            text-align: right;
+            padding-right: 20px;
+        }
+        .deadline {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .btn-confirm {
+            background-color: #2ecc71;
+        }
+        .btn-edit {
+            background-color: #f39c12;
+        }
+        .new-row {
+            background-color: #ecf0f1;
+        }
+        #addProjectForm, #loginForm {
+            background-color: #ecf0f1;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #addProjectForm input, #loginForm input {
+            margin-bottom: 10px;
+            padding: 5px;
+            width: 100%;
+        }
+        .empty-cell {
+            color: #bdc3c7;
+            font-style: italic;
+        }
+        #loginScreen, #mainScreen {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -20,7 +102,6 @@
 
     <div id="mainScreen">
         <h1>作業内容・時間記録表</h1>
-        <button class="btn" onclick="logout()">ログアウト</button>
 
         <div id="addProjectForm">
             <h3>新しい案件を追加</h3>
@@ -30,11 +111,12 @@
         </div>
 
         <div id="projects"></div>
+        <button class="btn" onclick="logout()">ログアウト</button>
     </div>
 
     <script>
-        let currentUser = null;
         let projects = [];
+        let currentUser = null;
 
         // ダミーユーザー情報（実際の実装では、サーバーサイドで管理すべきです）
         const users = [
@@ -61,17 +143,18 @@
 
         function logout() {
             currentUser = null;
-            projects = [];
             document.getElementById('loginScreen').style.display = 'block';
             document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
         }
 
         function loadProjects() {
-            const savedProjects = localStorage.getItem(`projects_${currentUser}`);
-            if (savedProjects) {
-                projects = JSON.parse(savedProjects);
+            const storedProjects = localStorage.getItem(`projects_${currentUser}`);
+            if (storedProjects) {
+                projects = JSON.parse(storedProjects);
             } else {
-                projects = []; // 初期データをここで設定する代わりに空の配列を使用
+                projects = [];
             }
         }
 
@@ -86,16 +169,45 @@
         }
 
         function createProjectTable(project, index) {
-            // 前回と同じ実装
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <tr>
+                    <th>日付</th>
+                    <th>作業内容</th>
+                    <th>所要時間（時間）</th>
+                    <th>備考</th>
+                    <th>操作</th>
+                </tr>
+                ${project.tasks.map((task, taskIndex) => `
+                    <tr>
+                        <td>${formatDate(task.date) || '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.content || '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.time !== null && task.time !== undefined ? task.time : '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.note || '<span class="empty-cell">未入力</span>'}</td>
+                        <td><button class="btn btn-edit" onclick="editTask(${index}, ${taskIndex})">修正</button></td>
+                    </tr>
+                `).join('')}
+            `;
+            return table;
         }
 
         function addRow(projectIndex) {
-            // 前回と同じ実装
+            const newRow = document.createElement('tr');
+            newRow.classList.add('new-row');
+            newRow.innerHTML = `
+                <td><input type="date"></td>
+                <td><input type="text"></td>
+                <td><input type="number" step="0.5" min="0"></td>
+                <td><input type="text"></td>
+                <td>
+                    <button class="btn btn-confirm" onclick="confirmTask(${projectIndex}, this)">確定</button>
+                </td>
+            `;
+            const table = document.querySelectorAll('table')[projectIndex];
+            table.appendChild(newRow);
         }
 
         function confirmTask(projectIndex, button) {
-            // 前回とほぼ同じ実装
-            // タスク追加後に saveProjects() を呼び出す
             const row = button.closest('tr');
             const inputs = row.querySelectorAll('input');
             const date = inputs[0].value;
@@ -131,12 +243,20 @@
         }
 
         function editTask(projectIndex, taskIndex) {
-            // 前回と同じ実装
+            const task = projects[projectIndex].tasks[taskIndex];
+            const row = document.querySelectorAll('table')[projectIndex].rows[taskIndex + 1];
+            row.innerHTML = `
+                <td><input type="date" value="${task.date || ''}"></td>
+                <td><input type="text" value="${task.content || ''}"></td>
+                <td><input type="number" step="0.5" min="0" value="${task.time !== null ? task.time : ''}"></td>
+                <td><input type="text" value="${task.note || ''}"></td>
+                <td>
+                    <button class="btn btn-confirm" onclick="updateTask(${projectIndex}, ${taskIndex}, this)">更新</button>
+                </td>
+            `;
         }
 
         function updateTask(projectIndex, taskIndex, button) {
-            // 前回とほぼ同じ実装
-            // タスク更新後に saveProjects() を呼び出す
             const row = button.closest('tr');
             const inputs = row.querySelectorAll('input');
             const date = inputs[0].value;
@@ -169,7 +289,9 @@
         }
 
         function updateTotalTime(projectIndex) {
-            // 前回と同じ実装
+            let totalTime = projects[projectIndex].tasks.reduce((sum, task) => sum + (task.time || 0), 0);
+            const totalTimeElement = document.querySelectorAll('.total-time')[projectIndex];
+            totalTimeElement.textContent = `合計時間：${totalTime.toFixed(1)}時間`;
         }
 
         function addProject() {
@@ -188,20 +310,34 @@
             };
 
             projects.push(newProject);
-            saveProjects();
             renderProjects();
+            saveProjects();
 
             document.getElementById('newProjectName').value = '';
             document.getElementById('newProjectDeadline').value = '';
         }
 
         function renderProjects() {
-            // 前回と同じ実装
+            const projectsContainer = document.getElementById('projects');
+            projectsContainer.innerHTML = '';
+
+            projects.forEach((project, index) => {
+                const projectElement = document.createElement('div');
+                projectElement.innerHTML = `
+                    <h2>${project.name} <span class="deadline">（締切：${formatDate(project.deadline)}）</span></h2>
+                `;
+                projectElement.appendChild(createProjectTable(project, index));
+                const totalTime = project.tasks.reduce((sum, task) => sum + (task.time || 0), 0);
+                projectElement.innerHTML += `
+                    <p class="total-time">合計時間：${totalTime.toFixed(1)}時間</p>
+                    <button class="btn" onclick="addRow(${index})">新しい作業を追加</button>
+                `;
+                projectsContainer.appendChild(projectElement);
+            });
         }
 
         // 初期表示（ログイン画面を表示）
         document.getElementById('loginScreen').style.display = 'block';
-        document.getElementById('mainScreen').style.display = 'none';
     </script>
 </body>
 </html>
