@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作業内容・時間記録表 - ログイン</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .total-time {
+            font-weight: bold;
+            text-align: right;
+            padding-right: 20px;
+        }
+        .deadline {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .btn-confirm {
+            background-color: #2ecc71;
+        }
+        .btn-edit {
+            background-color: #f39c12;
+        }
+        .new-row {
+            background-color: #ecf0f1;
+        }
+        #addProjectForm, #loginForm {
+            background-color: #ecf0f1;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #addProjectForm input, #loginForm input {
+            margin-bottom: 10px;
+            padding: 5px;
+            width: 100%;
+        }
+        .empty-cell {
+            color: #bdc3c7;
+            font-style: italic;
+        }
+        #loginScreen, #mainScreen {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginScreen">
+        <h1>作業内容・時間記録表 - ログイン</h1>
+        <div id="loginForm">
+            <input type="text" id="username" placeholder="ユーザー名">
+            <input type="password" id="password" placeholder="パスワード">
+            <button class="btn btn-confirm" onclick="login()">ログイン</button>
+        </div>
+    </div>
+
+    <div id="mainScreen">
+        <h1>作業内容・時間記録表</h1>
+
+        <div id="addProjectForm">
+            <h3>新しい案件を追加</h3>
+            <input type="text" id="newProjectName" placeholder="案件名">
+            <input type="date" id="newProjectDeadline" placeholder="締切日">
+            <button class="btn btn-confirm" onclick="addProject()">案件を追加</button>
+        </div>
+
+        <div id="projects"></div>
+    </div>
+
+    <script>
+        let projects = [
+            {
+                name: "YouTube動画用",
+                deadline: "2024-06-04",
+                tasks: [
+                    { date: "2024-06-01", content: "企画立案", time: 2, note: "" },
+                    { date: "2024-06-02", content: "脚本作成", time: 3, note: "" },
+                    { date: "2024-06-03", content: "撮影", time: 4, note: "" },
+                    { date: "2024-06-04", content: "編集", time: 5, note: "完了" }
+                ]
+            },
+            {
+                name: "フロントLPタイトル&文章",
+                deadline: "2024-06-09",
+                tasks: [
+                    { date: "2024-06-05", content: "リサーチ", time: 2, note: "" },
+                    { date: "2024-06-06", content: "タイトル案作成", time: 1.5, note: "" },
+                    { date: "2024-06-07", content: "本文作成", time: 3, note: "" },
+                    { date: "2024-06-08", content: "修正", time: 1, note: "" },
+                    { date: "2024-06-09", content: "最終確認", time: 0.5, note: "完了" }
+                ]
+            }
+        ];
+
+        // ダミーユーザー情報（実際の実装では、サーバーサイドで管理すべきです）
+        const users = [
+            { username: "user1", password: "pass1" },
+            { username: "user2", password: "pass2" }
+        ];
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const user = users.find(u => u.username === username && u.password === password);
+
+            if (user) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainScreen').style.display = 'block';
+                renderProjects();
+            } else {
+                alert('ユーザー名またはパスワードが間違っています。');
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const [year, month, day] = dateString.split('-');
+            return `${year}/${month}/${day}`;
+        }
+
+        function createProjectTable(project, index) {
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <tr>
+                    <th>日付</th>
+                    <th>作業内容</th>
+                    <th>所要時間（時間）</th>
+                    <th>備考</th>
+                    <th>操作</th>
+                </tr>
+                ${project.tasks.map((task, taskIndex) => `
+                    <tr>
+                        <td>${formatDate(task.date) || '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.content || '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.time !== null && task.time !== undefined ? task.time : '<span class="empty-cell">未入力</span>'}</td>
+                        <td>${task.note || '<span class="empty-cell">未入力</span>'}</td>
+                        <td><button class="btn btn-edit" onclick="editTask(${index}, ${taskIndex})">修正</button></td>
+                    </tr>
+                `).join('')}
+            `;
+            return table;
+        }
+
+        function addRow(projectIndex) {
+            const newRow = document.createElement('tr');
+            newRow.classList.add('new-row');
+            newRow.innerHTML = `
+                <td><input type="date"></td>
+                <td><input type="text"></td>
+                <td><input type="number" step="0.5" min="0"></td>
+                <td><input type="text"></td>
+                <td>
+                    <button class="btn btn-confirm" onclick="confirmTask(${projectIndex}, this)">確定</button>
+                </td>
+            `;
+            const table = document.querySelectorAll('table')[projectIndex];
+            table.appendChild(newRow);
+        }
+
+        function confirmTask(projectIndex, button) {
+            const row = button.closest('tr');
+            const inputs = row.querySelectorAll('input');
+            const date = inputs[0].value;
+            const content = inputs[1].value;
+            const time = inputs[2].value;
+            const note = inputs[3].value;
+
+            if (!date && !content && !time && !note) {
+                alert('少なくとも1つの項目を入力してください。');
+                return;
+            }
+
+            const newTask = {
+                date: date || null,
+                content: content || null,
+                time: time ? parseFloat(time) : null,
+                note: note || null
+            };
+
+            projects[projectIndex].tasks.push(newTask);
+
+            row.innerHTML = `
+                <td>${formatDate(newTask.date) || '<span class="empty-cell">未入力</span>'}</td>
+                <td>${newTask.content || '<span class="empty-cell">未入力</span>'}</td>
+                <td>${newTask.time !== null ? newTask.time : '<span class="empty-cell">未入力</span>'}</td>
+                <td>${newTask.note || '<span class="empty-cell">未入力</span>'}</td>
+                <td><button class="btn btn-edit" onclick="editTask(${projectIndex}, ${projects[projectIndex].tasks.length - 1})">修正</button></td>
+            `;
+            row.classList.remove('new-row');
+
+            updateTotalTime(projectIndex);
+        }
+
+        function editTask(projectIndex, taskIndex) {
+            const task = projects[projectIndex].tasks[taskIndex];
+            const row = document.querySelectorAll('table')[projectIndex].rows[taskIndex + 1];
+            row.innerHTML = `
+                <td><input type="date" value="${task.date || ''}"></td>
+                <td><input type="text" value="${task.content || ''}"></td>
+                <td><input type="number" step="0.5" min="0" value="${task.time !== null ? task.time : ''}"></td>
+                <td><input type="text" value="${task.note || ''}"></td>
+                <td>
+                    <button class="btn btn-confirm" onclick="updateTask(${projectIndex}, ${taskIndex}, this)">更新</button>
+                </td>
+            `;
+        }
+
+        function updateTask(projectIndex, taskIndex, button) {
+            const row = button.closest('tr');
+            const inputs = row.querySelectorAll('input');
+            const date = inputs[0].value;
+            const content = inputs[1].value;
+            const time = inputs[2].value;
+            const note = inputs[3].value;
+
+            if (!date && !content && !time && !note) {
+                alert('少なくとも1つの項目を入力してください。');
+                return;
+            }
+
+            projects[projectIndex].tasks[taskIndex] = {
+                date: date || null,
+                content: content || null,
+                time: time ? parseFloat(time) : null,
+                note: note || null
+            };
+
+            row.innerHTML = `
+                <td>${formatDate(date) || '<span class="empty-cell">未入力</span>'}</td>
+                <td>${content || '<span class="empty-cell">未入力</span>'}</td>
+                <td>${time !== '' ? time : '<span class="empty-cell">未入力</span>'}</td>
+                <td>${note || '<span class="empty-cell">未入力</span>'}</td>
+                <td><button class="btn btn-edit" onclick="editTask(${projectIndex}, ${taskIndex})">修正</button></td>
+            `;
+
+            updateTotalTime(projectIndex);
+        }
+
+        function updateTotalTime(projectIndex) {
+            let totalTime = projects[projectIndex].tasks.reduce((sum, task) => sum + (task.time || 0), 0);
+            const totalTimeElement = document.querySelectorAll('.total-time')[projectIndex];
+            totalTimeElement.textContent = `合計時間：${totalTime.toFixed(1)}時間`;
+        }
+
+        function addProject() {
+            const projectName = document.getElementById('newProjectName').value;
+            const projectDeadline = document.getElementById('newProjectDeadline').value;
+
+            if (!projectName || !projectDeadline) {
+                alert('案件名と締切日は必須です。');
+                return;
+            }
+
+            const newProject = {
+                name: projectName,
+                deadline: projectDeadline,
+                tasks: []
+            };
+
+            projects.push(newProject);
+            renderProjects();
+
+            document.getElementById('newProjectName').value = '';
+            document.getElementById('newProjectDeadline').value = '';
+        }
+
+        function renderProjects() {
+            const projectsContainer = document.getElementById('projects');
+            projectsContainer.innerHTML = '';
+
+            projects.forEach((project, index) => {
+                const projectElement = document.createElement('div');
+                projectElement.innerHTML = `
+                    <h2>${project.name} <span class="deadline">（締切：${formatDate(project.deadline)}）</span></h2>
+                `;
+                projectElement.appendChild(createProjectTable(project, index));
+                const totalTime = project.tasks.reduce((sum, task) => sum + (task.time || 0), 0);
+                projectElement.innerHTML += `
+                    <p class="total-time">合計時間：${totalTime.toFixed(1)}時間</p>
+                    <button class="btn" onclick="addRow(${index})">新しい作業を追加</button>
+                `;
+                projectsContainer.appendChild(projectElement);
+            });
+        }
+
+        // 初期表示（ログイン画面を表示）
+        document.getElementById('loginScreen').style.display = 'block';
+    </script>
+</body>
+</html>
